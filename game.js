@@ -10,7 +10,7 @@
         y: canvas.height 
       };
 
-    this.bodies = [new Player(this, gameSize)];
+    this.bodies = createInvaders(this).concat(new Player(this, gameSize));
 
     var self = this;
     var tick = function() {
@@ -26,14 +26,26 @@
   Game.prototype = {
 
     update: function() {
-      // console.log("hi");
+      var bodies = this.bodies;
+      // var notCollidingWithAnything = function(b1) {
+      //   return bodies.filter(function(b2) { return colliding(b1, b2); }).length === 0;
+      // };
+      // this.bodies = this.bodies.filter(notCollidingWithAnything);
+
+      for(var i=0; i < this.bodies.length; i++) {
+        this.bodies[i].update();
+      }
     },
 
     draw: function(screen, gameSize) {
-      // screen.fillRect(30, 30, 40, 40);
+      screen.clearRect(0, 0, gameSize.x, gameSize.y);
       for(var i=0; i < this.bodies.length; i++) {
         drawRect(screen, this.bodies[i]);
       }
+    },
+
+    addBody: function(body) {
+      this.bodies.push(body);
     }
 
   };
@@ -51,12 +63,81 @@
       y: gameSize.y - this.size.x
     };
 
+    this.keyboarder = new Keyboarder();
+
   };
 
   Player.prototype = {
     update: function() {
+      if(this.keyboarder.isDown(this.keyboarder.KEYS.LEFT)) {
+        this.center.x -= 2;
+      } else if(this.keyboarder.isDown(this.keyboarder.KEYS.RIGHT)) {
+        this.center.x += 2;
+      }
 
+      if(this.keyboarder.isDown(this.keyboarder.KEYS.SPACE)) {
+        var bullet = new Bullet({
+          x: this.center.x,
+          y: this.center.y - this.size.x/2
+        },
+        {
+          x: 0,
+          y: -6
+        });
+
+        this.game.addBody(bullet);
+      }
     }
+  };
+
+ var Bullet = function(center, velocity) {
+
+    this.size = {
+      x: 3,
+      y: 3
+    };
+    this.center = center;
+    this.velocity = velocity;
+
+  };
+
+  Bullet.prototype = {
+    update: function() {
+      this.center.x += this.velocity.x;
+      this.center.y += this.velocity.y;
+    }
+  };
+
+  var Invader = function(game, center) {
+    this.game = game;
+    this.size = {
+      x: 15,
+      y: 15
+    };
+    this.center = center;
+    this.partolX = 0;  // left = 0, right = 40
+    this.speedX = 0.3; // right, -0.3 is left
+  };
+
+  Invader.prototype = {
+    update: function() {
+      if(this.patrolX < 0 || this.patrolX > 40) {
+        this.speedX = -this.speedX;
+      }
+
+      this.center.x += this.speedX;
+      this.patrolX += this.speedX;
+    }
+  };
+
+  var createInvaders = function(game) {
+    var invaders = [];
+    for(var i=0; i < 24; i++) {   // total 24 invaders
+      var x = 30 + (i % 8) * 30;  // 8 invaders
+      var y = 30 + (i % 3) * 30;  // 3 rows
+      invaders.push(new Invader(game, { x: x, y: y }));
+    }
+    return invaders;
   };
 
   var drawRect = function(screen, body) {
@@ -67,6 +148,38 @@
       body.size.y
     );
   };
+
+  var Keyboarder = function() {
+    var keyState = {};
+
+    window.onkeydown = function(e) {
+      keyState[e.keyCode] = true;
+    };
+
+    window.onkeyup = function(e) {
+      keyState[e.keyCode] = false;
+    };
+
+    this.isDown = function(keyCode) {
+      return keyState[keyCode] === true;
+    };
+
+    this.KEYS = {
+      LEFT: 37,
+      RIGHT: 39,
+      SPACE: 32
+    };
+
+  };
+
+  // var colliding = function(b1, b2) {
+  //   return !(b1 === b2 ||
+  //            b1.center.x + b1.size.x/2 < b2.center.x - b2.size.x/2 ||
+  //            b1.center.y - b1.size.y/2 < b2.center.y - b2.size.y/2 ||
+  //            b1.center.x - b1.size.x/2 > b2.center.x + b2.size.x/2 ||
+  //            b1.center.y + b1.size.y/2 > b2.center.y + b2.size.y/2
+  //           );
+  // };
 
   window.onload = function() {    
     new Game("screen");
